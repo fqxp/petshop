@@ -3,14 +3,14 @@ name = "petshop"
 version = "0.1.0"
 description = "A Python package browser and search engine"
 authors = [ "Frank Ploss <mail@fqxp.de>" ]
-license = { file = "LICENSE.md" }
+license = "GPL-3.0-only"
 readme = "README.md"
 classifiers = [
-  "Development Status :: 2 - Pre-Alpha"
-  "Framework :: FastAPI"
-  "Intended Audience :: Developers"
-  "License :: OSI Approved :: GNU General Public License v3 (GPLv3)"
-  "Programming Language :: Python :: 3.12"
+  "Development Status :: 2 - Pre-Alpha",
+  "Framework :: FastAPI",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+  "Programming Language :: Python :: 3.12",
   "Topic :: Software Development :: Libraries :: Python Modules"
 ]
 
