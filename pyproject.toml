@@ -1,0 +1,33 @@
+[tool.poetry]
+name = "petshop"
+version = "0.1.0"
+description = "A Python package browser and search engine"
+authors = [ "Frank Ploss <mail@fqxp.de>" ]
+license = { file = "LICENSE.md" }
+readme = "README.md"
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha"
+  "Framework :: FastAPI"
+  "Intended Audience :: Developers"
+  "License :: OSI Approved :: GNU General Public License v3 (GPLv3)"
+  "Programming Language :: Python :: 3.12"
+  "Topic :: Software Development :: Libraries :: Python Modules"
+]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+google-cloud-bigquery = "^3.26.0"
+python-dotenv = "^1.0.1"
+sqlmodel = "^0.0.22"
+psycopg = {extras = ["binary", "pool"], version = "^3.2.3"}
+
+[tool.poetry.group.dev.dependencies]
+google-api-python-client-stubs = "^1.28.0"
+alembic = "^1.14.0"
+
+[tool.poetry.scripts]
+petshop-import = "petshop.importer.cli:main"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
