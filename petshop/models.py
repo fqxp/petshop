@@ -10,7 +10,7 @@ class Base(SQLModel): ...
 class Package(Base, table=True):
     id: int | None = Field(default=None, primary_key=True)
     metadata_version: str | None
-    name: str
+    name: str = Field(index=True)
     version: str
     summary: str | None
     description: str | None
