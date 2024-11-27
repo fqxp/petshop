@@ -1,5 +1,15 @@
 import os
 
+from sqlalchemy import Engine
 from sqlmodel import create_engine
 
-engine = create_engine(os.environ["DATABASE_URL"])
+_engine = None
+
+
+def engine() -> Engine:
+    global _engine
+
+    if not _engine:
+        _engine = create_engine(os.environ["DATABASE_URL"])
+
+    return _engine

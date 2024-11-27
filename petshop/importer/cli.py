@@ -2,24 +2,25 @@
 import datetime
 import logging
 import os
-from collections.abc import Iterator
+from typing import cast
 
 from dotenv import load_dotenv
 from google.cloud.bigquery import Client, QueryJobConfig, ScalarQueryParameter
-from sqlmodel import Session, create_engine, select
+from google.cloud.bigquery.table import RowIterator
+from sqlalchemy import Engine
+from sqlmodel import Session, select
 
+from petshop.db import engine
 from petshop.models import Package
 
 # roughly 5 years before project start - do not change light-handedly!
 PACKAGE_UPLOAD_TIME_AFTER = datetime.datetime(2020, 1, 1, 0, 0, 0)
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
-def get_packages(
-    client: Client, upload_time_after: datetime.datetime
-) -> Iterator[Package]:
+def get_packages(client: Client, upload_time_after: datetime.datetime) -> RowIterator:
     query = """
     SELECT
         name,
@@ -76,90 +77,56 @@ def get_packages(
 
     logger.info(f"Google BigQuery query resultset contains {rows.total_rows} rows")
 
-    for row in rows:
-        package = Package(**{key: value for key, value in row.items()})
-        # package = Package(
-        # metadata_version=row.metadata_version,
-        # name=row.name,
-        # version=row.version,
-        # summary=row.summary,
-        # description=row.description,
-        # description_content_type=row.description_content_type,
-        # author=row.author,
-        # author_email=row.author_email,
-        # maintainer=row.maintainer,
-        # maintainer_email=row.maintainer_email,
-        # license=row.license,
-        # keywords=row.keywords or [],
-        # classifiers=row.classifiers or [],
-        # platform=row.platform or [],
-        # home_page=row.home_page,
-        # download_url=row.download_url,
-        # requires_python=row.requires_python,
-        # requires=row.requires or [],
-        # provides=row.provides or [],
-        # obsoletes=row.obsoletes or [],
-        # requires_dist=row.requires_dist or [],
-        # provides_dist=row.provides_dist or [],
-        # obsoletes_dist=row.obsoletes_dist or [],
-        # requires_external=row.requires_external or [],
-        # project_urls=row.project_urls or [],
-        # uploaded_via=row.uploaded_via,
-        # upload_time=row.upload_time,
-        # filename=row.filename,
-        # size=row.size,
-        # path=row.path,
-        # python_version=row.python_version,
-        # packagetype=row.packagetype,
-        # comment_text=row.comment_text,
-        # has_signature=row.has_signature,
-        # md5_digest=row.md5_digest,
-        # sha256_digest=row.sha256_digest,
-        # blake2_256_digest=row.blake2_256_digest,
-        # license_expression=row.license_expression,
-        # license_files=row.license_files or [],
-        # )
-        yield package
+    return rows
 
 
-def get_latest_update_time(
-    session: Session, default: datetime.datetime
-) -> datetime.datetime:
-    statement = select(Package.upload_time).order_by(Package.upload_time.desc())  # pyright: ignore[reportAttributeAccessIssue]
-    upload_time = session.exec(statement).first()
+def get_latest_update_time(sqlmodel_engine: Engine) -> datetime.datetime | None:
+    with Session(sqlmodel_engine) as session:
+        statement = select(Package.upload_time).order_by(Package.upload_time.desc())  # pyright: ignore[reportAttributeAccessIssue]
+        upload_time = session.exec(statement).first()
 
-    if upload_time is None:
-        return default
+        return upload_time
 
-    return upload_time
+
+def import_packages(
+    sqlmodel_engine: Engine, package_rows: RowIterator, commit_every_rows: int = 5000
+):
+    with Session(sqlmodel_engine) as session:
+        keys = [cast(str, field.name) for field in package_rows.schema]
+
+        for index, row in enumerate(package_rows):
+            logger.debug(f"Processing {row.name} {row.version} ({row.upload_time})")
+
+            statement = select(Package).where(Package.name == row.name)
+            package = session.exec(statement).first()
+            if package:
+                for key in keys:
+                    setattr(package, key, getattr(row, key))
+            else:
+                package = Package(**{key: value for key, value in row.items()})
+
+            session.add(package)
+
+            if index > 0 and index % commit_every_rows == 0:
+                logger.info(f"🟢 committing {commit_every_rows} rows")
+                session.commit()
+
+        session.commit()
 
 
 def main():
     load_dotenv()  # pyright: ignore[reportUnusedCallResult]
-    sqlmodel_engine = create_engine(os.environ["DATABASE_URL"])
+    sqlmodel_engine = engine()
 
-    google_project = os.environ.get("GOOGLE_CLOUD_PROJECT")
+    google_project = os.environ["GOOGLE_CLOUD_PROJECT"]
     bigquery_client = Client(project=google_project)
 
-    with Session(sqlmodel_engine) as session:
-        upload_time_after = get_latest_update_time(session, PACKAGE_UPLOAD_TIME_AFTER)
-        logger.info(
-            f"Importing PyPI packages from Google BigQuery (google project: {google_project}, starting: {upload_time_after.isoformat()})"
-        )
+    upload_time_after = (
+        get_latest_update_time(sqlmodel_engine) or PACKAGE_UPLOAD_TIME_AFTER
+    )
+    logger.info(
+        f"Importing PyPI packages from Google BigQuery (project: {google_project}, starting: {upload_time_after.isoformat()})"
+    )
 
-        packages_iterator = get_packages(bigquery_client, upload_time_after)
-        count = 0
-        commit_every_rows = 5000
-        for package in packages_iterator:
-            print(f"{package.name} {package.version}: {package.upload_time}")
-
-            session.add(package)
-
-            if count >= commit_every_rows:
-                print(f"committing {commit_every_rows} rows")
-                session.commit()
-                count = 0
-            else:
-                count = count + 1
-
-        session.commit()
+    package_rows = get_packages(bigquery_client, upload_time_after)
+    import_packages(sqlmodel_engine, package_rows)
