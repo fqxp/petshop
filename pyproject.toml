@@ -31,7 +31,7 @@ alembic = "^1.14.0"
 poetry-plugin-dotenv = "^2.5.1"
 
 [tool.poetry.scripts]
-petshop-import = "petshop.importer.cli:main"
+petshop-import-packages = "petshop.importer.import_packages:main"
 petshop-server = "petshop.web.main:main"
 
 [build-system]
