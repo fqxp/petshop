@@ -1,10 +1,28 @@
 # pyright: reportUnknownVariableType=false,reportUnknownMemberType=false,reportUnknownArgumentType=false
 import datetime
 
-from sqlmodel import ARRAY, Column, Field, SQLModel, String
+from sqlmodel import ARRAY, Column, Field, Relationship, SQLModel, String
 
 
 class Base(SQLModel): ...
+
+
+class ClassifierPackageLink(Base, table=True):
+    classifier_id: int | None = Field(
+        default=None, foreign_key="classifier.id", primary_key=True
+    )
+    package_id: int | None = Field(
+        default=None, foreign_key="package.id", primary_key=True
+    )
+
+
+class Classifier(Base, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    name: str = Field(index=True)
+
+    packages: list["Package"] = Relationship(
+        back_populates="classifiers", link_model=ClassifierPackageLink
+    )
 
 
 class Package(Base, table=True):
@@ -48,3 +66,7 @@ class Package(Base, table=True):
     blake2_256_digest: str | None
     license_expression: str | None
     license_files: list[str] | None = Field(sa_column=Column(ARRAY(String)))
+
+    classifiers: list["Classifier"] = Relationship(
+        back_populates="packages", link_model=ClassifierPackageLink
+    )

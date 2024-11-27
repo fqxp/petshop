@@ -11,7 +11,7 @@ from sqlalchemy import Engine
 from sqlmodel import Session, select
 
 from petshop.db import engine
-from petshop.models import Package
+from petshop.models import Classifier, Package
 
 # roughly 5 years before project start - do not change light-handedly!
 PACKAGE_UPLOAD_TIME_AFTER = datetime.datetime(2020, 1, 1, 0, 0, 0)
@@ -92,6 +92,11 @@ def import_packages(
     sqlmodel_engine: Engine, package_rows: RowIterator, commit_every_rows: int = 5000
 ):
     with Session(sqlmodel_engine) as session:
+        classifiers_by_name = {
+            classifier.name: classifier
+            for classifier in session.exec(select(Classifier))
+        }
+
         keys = [cast(str, field.name) for field in package_rows.schema]
 
         for index, row in enumerate(package_rows):
@@ -99,11 +104,17 @@ def import_packages(
 
             statement = select(Package).where(Package.name == row.name)
             package = session.exec(statement).first()
+
             if package:
                 for key in keys:
                     setattr(package, key, getattr(row, key))
             else:
                 package = Package(**{key: value for key, value in row.items()})
+
+            package.classifiers = [
+                classifiers_by_name[classifier_name]
+                for classifier_name in row.classifiers_array
+            ]
 
             session.add(package)
 
@@ -111,6 +122,7 @@ def import_packages(
                 logger.info(f"🟢 committing {commit_every_rows} rows")
                 session.commit()
 
+        logger.info("🟢 committing leftover rows")
         session.commit()
 
 
