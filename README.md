@@ -1,3 +1,14 @@
+# Goals
+
+- Search for Python packages
+- Order package list by relevance for the user:
+  - popularity (to be defined)
+- Reasonable filtering:
+  - only show packages you would actually use (no alpha software,
+    no libraries when looking for apps, no abandoned projects)
+- Incorporate data from other sources (GitHub starts, issues, commits,
+  trends, ...)
+
 # Development setup
 
 Run `poetry shell` and `poetry install`.
