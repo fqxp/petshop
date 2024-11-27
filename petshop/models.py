@@ -21,7 +21,7 @@ class Package(Base, table=True):
     maintainer_email: str | None
     license: str | None
     keywords: list[str] | None = Field(sa_column=Column(ARRAY(String)))
-    classifiers: list[str] | None = Field(sa_column=Column(ARRAY(String)))
+    classifiers_array: list[str] | None = Field(sa_column=Column(ARRAY(String)))
     platform: list[str] | None = Field(sa_column=Column(ARRAY(String)))
     home_page: str | None
     download_url: str | None

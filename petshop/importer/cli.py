@@ -36,7 +36,7 @@ def get_packages(client: Client, upload_time_after: datetime.datetime) -> RowIte
         MAX_BY(maintainer_email, upload_time) AS maintainer_email,
         MAX_BY(license, upload_time) AS license,
         MAX_BY(keywords, upload_time) AS keywords,
-        MAX_BY(classifiers, upload_time) AS classifiers,
+        MAX_BY(classifiers, upload_time) AS classifiers_array,
         MAX_BY(platform, upload_time) AS platform,
         MAX_BY(home_page, upload_time) AS home_page,
         MAX_BY(download_url, upload_time) AS download_url,
