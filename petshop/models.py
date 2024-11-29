@@ -38,7 +38,7 @@ class Package(Base, table=True):
     maintainer: str | None
     maintainer_email: str | None
     license: str | None
-    keywords: list[str] | None = Field(sa_column=Column(ARRAY(String)))
+    keywords: str | None
     classifiers_array: list[str] | None = Field(sa_column=Column(ARRAY(String)))
     platform: list[str] | None = Field(sa_column=Column(ARRAY(String)))
     home_page: str | None
