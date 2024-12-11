@@ -7,7 +7,8 @@ from sqlalchemy import engine_from_config, pool
 import petshop.models
 from alembic import context
 
-load_dotenv()  # pyright:ignore[reportUnusedCallResult]
+env_file = ".env-test" if os.environ.get("RUN_ENV") == "test" else ".env"
+load_dotenv(env_file)  # pyright:ignore[reportUnusedCallResult]
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
