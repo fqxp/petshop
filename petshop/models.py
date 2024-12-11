@@ -1,7 +1,9 @@
 # pyright: reportUnknownVariableType=false,reportUnknownMemberType=false,reportUnknownArgumentType=false
 import datetime
+from datetime import datetime
 
-from sqlmodel import ARRAY, Column, Field, Relationship, SQLModel, String
+from sqlalchemy.orm import column_property, declared_attr
+from sqlmodel import ARRAY, Column, Field, Relationship, SQLModel, String, func
 
 
 class Base(SQLModel): ...
@@ -70,3 +72,10 @@ class Package(Base, table=True):
     classifiers: list["Classifier"] = Relationship(
         back_populates="packages", link_model=ClassifierPackageLink
     )
+class Download(Base, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    imported_at: datetime
+    package_id: int = Field(foreign_key="package.id")
+    package: Package = Relationship(back_populates="downloads")
+    month: datetime
+    downloads: int

@@ -19,7 +19,7 @@ Create a directory for Postgres data and start a Postgres Docker container:
 
 ```bash
 mkdir postgres-data
-docker run --rm --name petshop-postgres -e POSTGRES_PASSWORD=password -p 127.0.0.1:5439:5432 -d -v $PWD/postgresql-data/:/var/lib/postgresql/data postgres:14
+docker run --rm --shm-size=1g --name petshop-postgres -e POSTGRES_PASSWORD=password -p 127.0.0.1:5439:5432 -d -v $PWD/postgres-data:/var/lib/postgresql/data postgres:17
 ```
 
 ## Login to Google services

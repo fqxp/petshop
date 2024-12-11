@@ -24,15 +24,21 @@ psycopg = {extras = ["binary", "pool"], version = "^3.2.3"}
 fastapi = {extras = ["standard"], version = "^0.115.5"}
 poetry-plugin-dotenv = "^2.5.1"
 uvicorn = "^0.32.1"
+python-dateutil = "^2.9.0.post0"
+click = "^8.1.7"
 
 [tool.poetry.group.dev.dependencies]
 google-api-python-client-stubs = "^1.28.0"
 alembic = "^1.14.0"
 poetry-plugin-dotenv = "^2.5.1"
+pytest = "^8.3.3"
 
 [tool.poetry.scripts]
-petshop-import-packages = "petshop.importer.import_packages:main"
+petshop-import = "petshop.importer.cli:cli"
 petshop-server = "petshop.web.main:main"
+
+[tool.pyright]
+reportUnusedExpression = false
 
 [build-system]
 requires = ["poetry-core"]

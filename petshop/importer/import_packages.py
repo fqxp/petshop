@@ -4,7 +4,6 @@ import logging
 import os
 from typing import cast
 
-from dotenv import load_dotenv
 from google.cloud.bigquery import Client, QueryJobConfig, ScalarQueryParameter
 from google.cloud.bigquery.table import RowIterator
 from sqlalchemy import Engine
@@ -16,7 +15,6 @@ from petshop.models import Classifier, Package
 # roughly 5 years before project start - do not change light-handedly!
 PACKAGE_UPLOAD_TIME_AFTER = datetime.datetime(2020, 1, 1, 0, 0, 0)
 
-logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
@@ -88,8 +86,8 @@ def get_latest_update_time(sqlmodel_engine: Engine) -> datetime.datetime | None:
         return upload_time
 
 
-def import_packages(
-    sqlmodel_engine: Engine, package_rows: RowIterator, commit_every_rows: int = 5000
+def update_packages(
+    sqlmodel_engine: Engine, package_rows: RowIterator, commit_every_nth_row: int = 5000
 ):
     with Session(sqlmodel_engine) as session:
         classifiers_by_name = {
@@ -118,16 +116,15 @@ def import_packages(
 
             session.add(package)
 
-            if index > 0 and index % commit_every_rows == 0:
-                logger.info(f"🟢 committing {commit_every_rows} rows")
+            if index > 0 and index % commit_every_nth_row == 0:
+                logger.info(f"🟢 committing {commit_every_nth_row} rows")
                 session.commit()
 
         logger.info("🟢 committing leftover rows")
         session.commit()
 
 
-def main():
-    load_dotenv()  # pyright: ignore[reportUnusedCallResult]
+def import_packages():
     sqlmodel_engine = engine()
 
     google_project = os.environ["GOOGLE_CLOUD_PROJECT"]
@@ -141,4 +138,4 @@ def main():
     )
 
     package_rows = get_packages(bigquery_client, upload_time_after)
-    import_packages(sqlmodel_engine, package_rows)
+    update_packages(sqlmodel_engine, package_rows)
