@@ -10,6 +10,6 @@ def engine() -> Engine:
     global _engine
 
     if not _engine:
-        _engine = create_engine(os.environ["DATABASE_URL"])
+        _engine = create_engine(os.environ["DATABASE_URL"], echo=True)
 
     return _engine

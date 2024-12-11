@@ -2,3 +2,7 @@
 .ropeproject/
 postgres-data/
 .env
+
+bun.lockb
+node_modules
+frontend/dist
