@@ -1,41 +1,33 @@
 import { Button, Spinner, TextInput, Toast } from "flowbite-react";
-import { useCallback, useState } from "preact/hooks";
+import { useState, useCallback, Suspense } from "react";
 import { SubmitHandler, useForm } from "react-hook-form";
 import { FaMagnifyingGlass } from "react-icons/fa6";
+import PackageList from "./PackageList";
+
+const fetchPackages = async (searchTerm: string) => {
+  const response = await fetch(
+    `${import.meta.env.VITE_API_URL}/packages?q=${searchTerm}`,
+  );
+  return response.json();
+};
 
 type SearchInputs = {
   searchTerm: string;
 };
 
-type Package = {
-  id: number;
-  name: string;
-  downloads_total: number;
-};
-
 export default function Browse() {
   const { register, handleSubmit } = useForm<SearchInputs>();
-  const [packages, setPackages] = useState<Package[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [searchTerm, setSearchTerm] = useState<string>("");
 
-  const onSearch: SubmitHandler<SearchInputs> = useCallback(async (data) => {
-    setLoading(true);
-    const response = await fetch(
-      `${import.meta.env.VITE_API_URL}/packages?q=${data.searchTerm}`,
-    );
-    if (response.ok) {
-      setError(null);
-      setPackages(await response.json());
-    } else {
-      setError(`Error ${response.status}: ${response.statusText}`);
-      setPackages(null);
-    }
-    setLoading(false);
-  }, []);
+  const onSearch: SubmitHandler<SearchInputs> = useCallback(
+    async (data: SearchInputs) => {
+      setSearchTerm(data.searchTerm);
+    },
+    [],
+  );
 
   return (
-    <div className="mx-16">
+    <div className={"x-16"}>
       <div className="flex mt-8">
         <form onSubmit={handleSubmit(onSearch)} className="grow flex gap-2">
           <TextInput
@@ -48,17 +40,15 @@ export default function Browse() {
           <Button type="submit">Search</Button>
         </form>
       </div>
-      {loading && <Spinner />}
-      {(packages && (
-        <div>
-          {packages.map((pkg: Package) => (
-            <div>
-              {pkg.name} <em>({pkg.downloads_total} downloads)</em>
-            </div>
-          ))}
-        </div>
-      )) || <div className="mt-8">Try entering a search term above.</div>}
-      {error && <Toast>{error}</Toast>}
+      <div className="flex">
+        {searchTerm === "" ? (
+          <div>Try entering a search term.</div>
+        ) : (
+          <Suspense fallback={<Spinner size="xl" className="self-center" />}>
+            <PackageList packagesPromise={fetchPackages(searchTerm)} />
+          </Suspense>
+        )}
+      </div>
     </div>
   );
 }
