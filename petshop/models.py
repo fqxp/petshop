@@ -1,10 +1,47 @@
 # pyright: reportUnknownVariableType=false,reportUnknownMemberType=false,reportUnknownArgumentType=false
 from datetime import datetime
+from typing import Any, Type
 
-from sqlmodel import ARRAY, Column, Field, Relationship, SQLModel, String
+from sqlalchemy import Selectable, TableClause
+from sqlalchemy.orm import registry
+from sqlalchemy.util import classproperty
+from sqlalchemy_utils import create_materialized_view
+from sqlmodel import (
+    ARRAY,
+    Column,
+    Field,
+    Index,
+    Relationship,
+    SQLModel,
+    String,
+    col,
+    func,
+)
+from sqlmodel.sql.expression import select
 
 
-class Base(SQLModel): ...
+class Base(SQLModel, registry=registry()): ...
+
+
+view_registry = registry()
+
+
+class ViewBase(SQLModel, registry=view_registry):
+    __view_query__: Selectable
+    __view_indexes__: list[Index]
+
+    @classproperty
+    def __table__(cls) -> TableClause:
+        return create_materialized_view(
+            name=cls.__name__.lower(),
+            selectable=cls.__view_query__,
+            indexes=cls.__view_indexes__,
+            metadata=cls.metadata,
+        )
+
+    @classmethod
+    def __all_views__(cls) -> list[type["ViewBase"]]:
+        return cls.__subclasses__()
 
 
 class ClassifierPackageLink(Base, table=True):
@@ -76,15 +113,28 @@ class Package(PackageBase, table=True):
     downloads: list["Download"] = Relationship(back_populates="package")
 
 
-class PackagePublic(PackageBase):
-    id: int
-    downloads_total: int
-
-
 class Download(Base, table=True):
     id: int | None = Field(default=None, primary_key=True)
     imported_at: datetime
-    package_id: int = Field(foreign_key="package.id")
+    package_id: int = Field(foreign_key="package.id", index=True)
     package: Package = Relationship(back_populates="downloads")
     month: datetime
     downloads: int
+
+
+class DownloadsTotal(ViewBase, table=True):
+    __view_query__: Selectable = (
+        select(
+            col(Package.id).label("package_id"),
+            func.sum(Download.downloads).label("downloads_total"),
+        )
+        .join(Download, isouter=True)
+        .group_by(col(Package.id))
+    )
+    __view_indexes__: list[Index] = [
+        Index(
+            "downloads_total_package_id_fkey",
+            "package_id",
+            unique=True,
+        )
+    ]

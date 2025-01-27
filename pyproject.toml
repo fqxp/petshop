@@ -26,12 +26,14 @@ poetry-plugin-dotenv = "^2.5.1"
 uvicorn = "^0.32.1"
 python-dateutil = "^2.9.0.post0"
 click = "^8.1.7"
+sqlalchemy-utils = "^0.41.2"
 
 [tool.poetry.group.dev.dependencies]
 google-api-python-client-stubs = "^1.28.0"
 alembic = "^1.14.0"
 poetry-plugin-dotenv = "^2.5.1"
 pytest = "^8.3.3"
+alembic-utils = "^0.8.5"
 
 [tool.poetry.scripts]
 petshop-import = "petshop.importer.cli:cli"

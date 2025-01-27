@@ -1,11 +1,19 @@
+import json
 import os
+import re
+from collections.abc import Generator, Iterable, Iterator
 from logging.config import fileConfig
+from typing import Any, cast
 
+from alembic_utils.pg_materialized_view import PGMaterializedView
+from alembic_utils.replaceable_entity import register_entities
 from dotenv import load_dotenv
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import Connection, Select, engine_from_config, pool, text
+from sqlalchemy.schema import SchemaItem
+from sqlmodel import Table
 
 import petshop.models
-from alembic import context
+from alembic import context, op
 
 env_file = ".env-test" if os.environ.get("RUN_ENV") == "test" else ".env"
 load_dotenv(env_file)  # pyright:ignore[reportUnusedCallResult]
@@ -30,6 +38,46 @@ target_metadata = petshop.models.Base.metadata
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
+
+
+def normalize_sql(sql: str) -> str:
+    return re.sub(r"[ \n]+", " ", sql.strip())
+
+
+def modified_materialized_views(connection: Connection) -> Iterator[Table]:
+    views: list[Table] = [
+        cast(Table, mapper.persist_selectable)
+        for mapper in petshop.models.ViewBase._sa_registry.mappers  # pyright: ignore[reportPrivateUsage]
+    ]
+
+    if not views:
+        return
+
+    query = text(
+        """
+        SELECT matviewname, definition
+        FROM pg_catalog.pg_matviews
+        """
+    )
+    existent_views = {
+        view_name: statement for view_name, statement in connection.execute(query).all()
+    }
+
+    print(json.dumps(existent_views))
+
+    for view in petshop.models.ViewBase.__all_views__():
+        view_table = cast(Table, cast(object, view.__table__))
+        view_query = normalize_sql(str(view.__view_query__))
+
+        print(f"query = `{view_query}`")
+        if view_table.name not in existent_views:
+            yield view_table
+            continue
+
+        existent_view_query = normalize_sql(str(existent_views[view_table.name]))
+        print(f"exery = `{existent_view_query}`")
+        if view_query != existent_view_query:
+            yield view_table
 
 
 def run_migrations_offline() -> None:
@@ -74,6 +122,8 @@ def run_migrations_online() -> None:
 
         with context.begin_transaction():
             context.run_migrations()
+
+        print(list(modified_materialized_views(connection)))
 
 
 if context.is_offline_mode():
